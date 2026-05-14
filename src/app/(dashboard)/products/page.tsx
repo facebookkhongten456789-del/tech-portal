@@ -7,6 +7,22 @@ import Link from "next/link";
 
 /* ─── Server Actions (bảo mật: verify session trong mỗi action) ─── */
 
+async function updateQuantity(formData: FormData) {
+  "use server";
+  const session = await getServerSession(authOptions);
+  if (!session || session.user?.role !== "ADMIN") return;
+
+  const id  = formData.get("id") as string;
+  const qty = Math.max(0, parseInt(formData.get("quantity") as string) || 0);
+  if (!id) return;
+
+  await prisma.product.update({ 
+    where: { id }, 
+    data: { quantity: qty, isOutOfStock: qty === 0 } // Tự động gỡ OutOfStock nếu qty > 0
+  });
+  revalidatePath("/products");
+}
+
 async function toggleOutOfStock(formData: FormData) {
   "use server";
   const session = await getServerSession(authOptions);
@@ -125,7 +141,7 @@ export default async function ProductsPage() {
                   <th>Ảnh mẫu</th>
                   <th>Mã SKU</th>
                   <th>Tên sản phẩm</th>
-                  <th>Trạng thái tồn kho</th>
+                  <th>Số lượng tồn</th>
                   <th>Đơn giá</th>
                   <th>Hành động</th>
                 </tr>
@@ -156,15 +172,31 @@ export default async function ProductsPage() {
                       <div className="text-xs text-muted" style={{ maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.description}</div>
                     </td>
                     <td>
-                      <span className={`badge ${p.isOutOfStock || p.quantity === 0 ? "badge-red" : p.quantity < 5 ? "badge-yellow" : "badge-green"}`}>
-                        {p.isOutOfStock ? "Hết hàng (Thủ công)" : p.quantity === 0 ? "Hết hàng (Tự động)" : p.quantity < 5 ? `⚠️ Sắp hết (${p.quantity})` : `✅ Còn hàng (${p.quantity})`}
-                      </span>
+                      {isAdmin ? (
+                        <form action={updateQuantity} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                          <input type="hidden" name="id" value={p.id} />
+                          <input
+                            type="number"
+                            name="quantity"
+                            defaultValue={p.quantity}
+                            min={0}
+                            className="form-input font-mono"
+                            style={{ width: "75px", padding: "4px 8px", fontSize: "12px" }}
+                          />
+                          <button type="submit" className="btn btn-ghost btn-sm" title="Cập nhật số lượng">💾</button>
+                        </form>
+                      ) : (
+                        <span className={`badge ${p.isOutOfStock || p.quantity === 0 ? "badge-red" : p.quantity < 5 ? "badge-yellow" : "badge-green"}`}>
+                          {p.quantity}
+                        </span>
+                      )}
                     </td>
                     <td className="font-mono text-sm">
                       {p.price.toLocaleString("vi-VN")}₫
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: "6px" }}>
+                        <Link href={`/products/${p.id}`} className="btn btn-ghost btn-sm">Xem</Link>
                         {isAdmin && (
                           <>
                             <form action={toggleOutOfStock}>
@@ -179,9 +211,6 @@ export default async function ProductsPage() {
                               <button type="submit" className="btn btn-ghost btn-sm" style={{ color: "var(--red)" }}>Xóa</button>
                             </form>
                           </>
-                        )}
-                        {!isAdmin && (
-                          <span className="text-xs text-muted">Chỉ xem</span>
                         )}
                       </div>
                     </td>

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   if (Array.isArray(body.images)) {
     articleImages = (body.images as unknown[])
       .map((u) => sanitizeString(u, 200))
-      .filter((u) => u.startsWith("/uploads/articles/"))
+      .filter((u) => u.startsWith("/uploads/articles/") || u.includes("cloudinary.com"))
       .slice(0, 10);
   }
 

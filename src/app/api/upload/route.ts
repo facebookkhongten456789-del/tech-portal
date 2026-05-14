@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
-import path from "path";
-import fs from "fs/promises";
-import crypto from "crypto";
+import { v2 as cloudinary } from "cloudinary";
+
+// Cấu hình Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "articles");
 
 export async function POST(req: NextRequest) {
   // 1. Auth check
@@ -39,24 +43,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Sanitize & generate safe filename
-    const ext = file.type.split("/")[1].replace("jpeg", "jpg");
-    const randomName = crypto.randomBytes(16).toString("hex");
-    const filename = `${Date.now()}-${randomName}.${ext}`;
-
-    // 5. Ensure upload dir exists
-    await fs.mkdir(UPLOAD_DIR, { recursive: true });
-
-    // 6. Save file
+    // 4. Chuyển đổi File sang Buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await fs.writeFile(path.join(UPLOAD_DIR, filename), buffer);
 
+    // 5. Upload lên Cloudinary bằng Promise wrapper cho upload_stream
+    const uploadToCloudinary = () => {
+      return new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          {
+            folder: "tech-portal/articles", // Tổ chức thư mục trên Cloudinary
+            resource_type: "auto",
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        ).end(buffer);
+      });
+    };
+
+    const result = (await uploadToCloudinary()) as any;
+
+    // Trả về URL từ Cloudinary
     return NextResponse.json({
-      url: `/uploads/articles/${filename}`,
+      url: result.secure_url,
     });
+
   } catch (err) {
-    console.error("[upload] error:", err);
-    return NextResponse.json({ error: "Upload thất bại" }, { status: 500 });
+    console.error("[upload_cloudinary] error:", err);
+    return NextResponse.json({ error: "Upload lên đám mây thất bại" }, { status: 500 });
   }
 }
