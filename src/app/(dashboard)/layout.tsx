@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import LogoutButton from "@/components/LogoutButton";
+import ApprovalStatusGuard from "@/components/ApprovalStatusGuard";
 
 const NAV_ITEMS = [
   {
@@ -15,20 +16,20 @@ const NAV_ITEMS = [
     section: "KHO HÀNG",
     links: [
       { href: "/products", icon: "📦", label: "Danh sách sản phẩm" },
-      { href: "/products/new", icon: "➕", label: "Thêm sản phẩm", adminOnly: true },
+      { href: "/products/new", icon: "➕", label: "Thêm sản phẩm", adminOnly: true, approvedOnly: true },
     ],
   },
   {
     section: "NỘI DUNG",
     links: [
       { href: "/articles", icon: "📰", label: "Tất cả bài viết" },
-      { href: "/articles/new", icon: "✍️", label: "Đăng bài mới" },
+      { href: "/articles/new", icon: "✍️", label: "Đăng bài mới", approvedOnly: true },
     ],
   },
   {
     section: "HỆ THỐNG",
     links: [
-      { href: "/members", icon: "👥", label: "Quản lý thành viên", adminOnly: true },
+      { href: "/members", icon: "👥", label: "Phê duyệt thành viên", adminOnly: true, approvedOnly: true },
     ],
   },
 ];
@@ -45,6 +46,7 @@ export default async function DashboardLayout({
     .slice(0, 2)
     .toUpperCase();
   const isAdmin = session.user?.role === "ADMIN";
+  const isApproved = (session.user as any).isApproved === true;
 
   return (
     <div className="app-shell">
@@ -59,7 +61,11 @@ export default async function DashboardLayout({
         {/* Nav */}
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((group) => {
-            const filteredLinks = group.links.filter(l => !l.adminOnly || isAdmin);
+            const filteredLinks = group.links.filter(l => {
+              if (l.adminOnly && !isAdmin) return false;
+              if (l.approvedOnly && !isApproved) return false;
+              return true;
+            });
             if (filteredLinks.length === 0) return null;
             return (
               <div key={group.section}>
@@ -87,6 +93,7 @@ export default async function DashboardLayout({
                 <span className={isAdmin ? "chip chip-admin" : "chip chip-tech"}>
                   {isAdmin ? "⬡ Admin" : "🔧 Technician"}
                 </span>
+                {!isApproved && <span className="chip chip-tech" style={{ marginLeft: "4px", background: "var(--yellow)", color: "black" }}>Guest</span>}
               </div>
             </div>
           </div>
@@ -95,7 +102,10 @@ export default async function DashboardLayout({
       </aside>
 
       {/* ── Main ── */}
-      <div className="main-content">{children}</div>
+      <div className="main-content">
+        <ApprovalStatusGuard />
+        {children}
+      </div>
     </div>
   );
 }

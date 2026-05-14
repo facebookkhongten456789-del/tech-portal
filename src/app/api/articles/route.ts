@@ -15,8 +15,8 @@ interface ArticleBody {
 
 export async function POST(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  if (!token || !token.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token || !token.id || !(token as any).isApproved) {
+    return NextResponse.json({ error: "Unauthorized or Not Approved" }, { status: 401 });
   }
 
   let body: ArticleBody = {};
@@ -65,8 +65,8 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token || !(token as any).isApproved) {
+    return NextResponse.json({ error: "Unauthorized or Not Approved" }, { status: 401 });
   }
 
   const articles = await prisma.article.findMany({

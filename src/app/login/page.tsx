@@ -1,19 +1,29 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+
+  useEffect(() => {
+    if (searchParams.get("registered")) {
+      setSuccessMsg("Đăng ký thành công! Vui lòng đăng nhập.");
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccessMsg("");
     setLoading(true);
     try {
       const res = await signIn("credentials", { email, password, redirect: false });
@@ -81,6 +91,12 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {successMsg && (
+            <div className="alert alert-success" style={{ marginBottom: "16px" }}>
+              ✅ {successMsg}
+            </div>
+          )}
+
           {error && (
             <div className="alert alert-error" style={{ marginBottom: "16px" }}>
               ⚠ {error}
@@ -96,7 +112,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="form-input"
-                placeholder="admin@techportal.com"
+                placeholder="name@company.com"
                 required
                 autoComplete="username"
               />
@@ -124,6 +140,10 @@ export default function LoginPage() {
               {loading ? "Đang xác thực..." : "Đăng nhập →"}
             </button>
           </form>
+
+          <div style={{ textAlign: "center", marginTop: "24px", fontSize: "13px", color: "var(--fg-muted)" }}>
+            Chưa có tài khoản? <Link href="/register" style={{ color: "var(--accent)", fontWeight: 600 }}>Đăng ký ngay</Link>
+          </div>
         </div>
 
         <p style={{ textAlign: "center", marginTop: "20px", fontSize: "11px", color: "var(--fg-muted)" }}>
@@ -131,5 +151,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

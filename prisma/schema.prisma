@@ -13,6 +13,7 @@ model User {
   email        String    @unique
   passwordHash String
   role         String    @default("TECHNICIAN") // ADMIN | TECHNICIAN
+  isApproved   Boolean   @default(false)
   createdAt    DateTime  @default(now())
   articles     Article[]
 }
@@ -38,7 +39,7 @@ model Article {
   published Boolean  @default(false)
   isApproved Boolean @default(false) // Manual approval by Admin
   authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 async function deleteArticle(formData: FormData) {
   "use server";
   const session = await getServerSession(authOptions);
-  if (!session) redirect("/login");
+  if (!session || !(session.user as any).isApproved) redirect("/login");
 
   const id = formData.get("id") as string;
   if (!id) return;
@@ -27,7 +27,7 @@ async function deleteArticle(formData: FormData) {
 async function togglePublish(formData: FormData) {
   "use server";
   const session = await getServerSession(authOptions);
-  if (!session) redirect("/login");
+  if (!session || !(session.user as any).isApproved) redirect("/login");
 
   const id        = formData.get("id") as string;
   const published = formData.get("published") === "true";
@@ -47,7 +47,7 @@ async function togglePublish(formData: FormData) {
 async function approveArticle(formData: FormData) {
   "use server";
   const session = await getServerSession(authOptions);
-  if (!session || session.user?.role !== "ADMIN") return;
+  if (!session || session.user?.role !== "ADMIN" || !(session.user as any).isApproved) return;
   const id = formData.get("id") as string;
   if (!id) return;
   await prisma.article.update({ where: { id }, data: { isApproved: true } });
@@ -58,7 +58,8 @@ export default async function ArticlesPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
-  const isAdmin = session.user?.role === "ADMIN";
+  const isApproved = (session.user as any).isApproved === true;
+  const isAdmin = session.user?.role === "ADMIN" && isApproved;
   const userId  = session.user!.id;
 
   const articles = await prisma.article.findMany({
@@ -85,13 +86,20 @@ export default async function ArticlesPage() {
             <span style={{ color: "var(--fg-secondary)" }}>Bài viết</span>
           </div>
         </div>
-        <Link href="/articles/new" className="btn btn-primary">
-          ＋ Đăng bài mới
-        </Link>
+        {isApproved && (
+          <Link href="/articles/new" className="btn btn-primary">
+            ＋ Đăng bài mới
+          </Link>
+        )}
       </header>
 
       <div className="page-body animate-in">
-        {/* Stats */}
+        {!isApproved && (
+          <div className="alert alert-warning" style={{ marginBottom: "20px" }}>
+            ⚠️ Chế độ xem: Tài khoản của bạn đang chờ phê duyệt. Bạn không thể đăng bài hoặc chỉnh sửa nội dung lúc này.
+          </div>
+        )}
+
         <div className="page-section">
           <div className="stat-grid" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
             <div className="stat-card blue">
@@ -117,110 +125,42 @@ export default async function ArticlesPage() {
           </div>
         </div>
 
-        {/* Article list */}
         <div className="section-header">
           <div className="section-title">Danh sách bài viết</div>
-          <span className="text-sm text-muted">{articles.length} bài</span>
         </div>
 
         {articles.length === 0 ? (
           <div className="card" style={{ padding: "64px", textAlign: "center", color: "var(--fg-muted)" }}>
-            <div style={{ fontSize: "48px", marginBottom: "12px" }}>📭</div>
-            <div style={{ fontWeight: 600, marginBottom: "8px" }}>Chưa có bài viết nào</div>
-            <div className="text-sm text-muted" style={{ marginBottom: "20px" }}>
-              Hãy là người đầu tiên chia sẻ kiến thức kỹ thuật!
-            </div>
-            <Link href="/articles/new" className="btn btn-primary">＋ Đăng bài đầu tiên</Link>
+            📭 Chưa có bài viết nào.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {articles.map((article) => {
-              const canAct = article.author.id === userId || isAdmin;
+              const canAct = (article.author.id === userId || isAdmin) && isApproved;
               let imgList: string[] = [];
               try { imgList = JSON.parse(article.images); } catch { imgList = []; }
               const thumb = imgList[0] ?? null;
 
               return (
-                <div
-                  key={article.id}
-                  className="card"
-                  style={{
-                    display: "flex",
-                    gap: "16px",
-                    padding: "0",
-                    overflow: "hidden",
-                    borderLeft: `3px solid ${article.published ? (article.isApproved ? "var(--green)" : "var(--yellow)") : "var(--fg-muted)"}`,
-                    transition: "border-color .2s, transform .2s",
-                  }}
-                >
-                  {/* Thumbnail */}
+                <div key={article.id} className="card" style={{ display: "flex", gap: "16px", padding: "0", overflow: "hidden" }}>
                   {thumb && (
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={thumb}
-                      alt="thumbnail"
-                      style={{ width: "120px", objectFit: "cover", flexShrink: 0 }}
-                    />
+                    <img src={thumb} alt="thumb" style={{ width: "120px", objectFit: "cover" }} />
                   )}
-
-                  <div style={{ flex: 1, padding: "16px 16px 16px 0", minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {/* Badges row */}
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "6px" }}>
-                          <span className={`badge ${article.published ? "badge-green" : "badge-gray"}`}>
-                            {article.published ? "✅ Đã đăng" : "📄 Nháp"}
-                          </span>
-                          <span className={`badge ${article.isApproved ? "badge-green" : "badge-yellow"}`}>
-                            {article.isApproved ? "🛡️ Đã duyệt" : "⏳ Chờ duyệt"}
-                          </span>
-                          {article.author.id === userId && (
-                            <span className="badge badge-purple">của bạn</span>
-                          )}
-                          {imgList.length > 0 && (
-                            <span className="badge badge-gray">🖼️ {imgList.length} ảnh</span>
-                          )}
+                  <div style={{ flex: 1, padding: "16px 16px 16px 0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ display: "flex", gap: "6px", marginBottom: "6px" }}>
+                          <span className={`badge ${article.published ? "badge-green" : "badge-gray"}`}>{article.published ? "Đã đăng" : "Nháp"}</span>
+                          <span className={`badge ${article.isApproved ? "badge-green" : "badge-yellow"}`}>{article.isApproved ? "Đã duyệt" : "Chờ duyệt"}</span>
                         </div>
-
-                        {/* Title */}
-                        <Link
-                          href={`/articles/${article.id}`}
-                          style={{ fontWeight: 700, fontSize: "15px", display: "block", marginBottom: "4px" }}
-                        >
-                          {article.title}
-                        </Link>
-
-                        {/* Meta */}
-                        <div className="text-xs text-muted">
-                          ✍️ {article.author.name} &nbsp;·&nbsp;
-                          {new Date(article.createdAt).toLocaleDateString("vi-VN", {
-                            day: "2-digit", month: "2-digit", year: "numeric",
-                            hour: "2-digit", minute: "2-digit",
-                          })}
-                        </div>
+                        <Link href={`/articles/${article.id}`} style={{ fontWeight: 700, fontSize: "15px" }}>{article.title}</Link>
+                        <div className="text-xs text-muted">✍️ {article.author.name}</div>
                       </div>
-
-                      {/* Actions */}
                       {canAct && (
-                        <div style={{ display: "flex", gap: "6px", flexShrink: 0, flexWrap: "wrap" }}>
-                          {isAdmin && !article.isApproved && (
-                            <form action={approveArticle} style={{ display: "inline" }}>
-                              <input type="hidden" name="id" value={article.id} />
-                              <button type="submit" className="btn btn-primary btn-sm">Duyệt bài</button>
-                            </form>
-                          )}
+                        <div style={{ display: "flex", gap: "6px" }}>
                           <Link href={`/articles/${article.id}`} className="btn btn-ghost btn-sm">Xem</Link>
-                          <form action={togglePublish} style={{ display: "inline" }}>
-                            <input type="hidden" name="id" value={article.id} />
-                            <input type="hidden" name="published" value={String(article.published)} />
-                            <button
-                              type="submit"
-                              className={`btn btn-sm ${article.published ? "btn-secondary" : "btn-primary"}`}
-                            >
-                              {article.published ? "Gỡ xuống" : "Đăng"}
-                            </button>
-                          </form>
-                          <form action={deleteArticle} style={{ display: "inline" }}>
+                          <form action={deleteArticle}>
                             <input type="hidden" name="id" value={article.id} />
                             <button type="submit" className="btn btn-danger btn-sm">Xóa</button>
                           </form>

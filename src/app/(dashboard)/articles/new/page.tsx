@@ -6,7 +6,13 @@ import ArticleEditor from "@/components/ArticleEditor";
 
 export default async function NewArticlePage() {
   const session = await getServerSession(authOptions);
+  
   if (!session) redirect("/login");
+  
+  // Kiểm tra nếu chưa được duyệt thì không cho vào trang này
+  if (!(session.user as any).isApproved) {
+    redirect("/dashboard");
+  }
 
   return (
     <>
@@ -52,7 +58,7 @@ export default async function NewArticlePage() {
                     ## Tiêu đề 2<br/>
                     - Danh sách<br/>
                     &gt; Trích dẫn<br/>
-                    `code inline`<br/>
+                    `code inline_<br/>
                     ```code block```
                   </code>
                 </div>
