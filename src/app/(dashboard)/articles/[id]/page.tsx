@@ -33,9 +33,12 @@ function renderMarkdown(md: string): string {
     .replace(/^(\d+)\. (.+)$/gm, "<li>$2</li>")
     .replace(/```[\s\S]*?```/g, (m) => `<pre><code>${m.slice(3, -3).trim()}</code></pre>`)
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => {
-      // Only allow /uploads/ paths to prevent SSRF
-      if (!src.startsWith("/uploads/")) return "";
-      return `<img src="${src}" alt="${alt}" style="max-width:100%;border-radius:8px;margin:8px 0;" />`;
+      // Allow Cloudinary and relative uploads
+      const isSafe = src.startsWith("https://res.cloudinary.com/") || src.startsWith("/uploads/");
+      if (!isSafe) return "";
+      return `<a href="${src}" target="_blank" rel="noopener noreferrer">
+        <img src="${src}" alt="${alt}" style="max-width:100%;border-radius:12px;margin:12px 0;border:1px solid var(--border);cursor:zoom-in;transition:var(--transition-base);" />
+      </a>`;
     })
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, href) => {
       const safe = href.startsWith("http") ? href : "";
@@ -159,10 +162,12 @@ export default async function ArticleDetailPage({
             {images.length > 1 && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: "8px", marginBottom: "24px" }}>
                 {images.map((src, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={i} src={src} alt={`Ảnh ${i+1}`}
-                    style={{ width: "100%", height: "140px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--border)" }}
-                  />
+                  <a key={i} href={src} target="_blank" rel="noopener noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`Ảnh ${i+1}`}
+                      style={{ width: "100%", height: "140px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--border)", cursor: "zoom-in" }}
+                    />
+                  </a>
                 ))}
               </div>
             )}
