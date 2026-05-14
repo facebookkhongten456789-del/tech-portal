@@ -15,14 +15,14 @@ export default async function DashboardPage() {
       prisma.user.count(),
       prisma.product.count(),
       prisma.article.count({ where: { published: true } }),
-      prisma.product.count({ where: { quantity: { lt: 5 } } }),
+      prisma.product.count({ where: { stock: { lt: 5 } } }),
       prisma.article.count({ where: { published: false } }),
     ]);
 
   const recentProducts = await prisma.product.findMany({
     orderBy: { updatedAt: "desc" },
     take: 5,
-    select: { id: true, name: true, sku: true, quantity: true, updatedAt: true },
+    select: { id: true, name: true, sku: true, stock: true, updatedAt: true },
   });
 
   const recentArticles = await prisma.article.findMany({
@@ -170,8 +170,8 @@ export default async function DashboardPage() {
                         <div className="text-xs text-muted font-mono">{p.sku}</div>
                       </td>
                       <td>
-                        <span className={`badge ${p.quantity < 5 ? "badge-red" : "badge-green"}`}>
-                          {p.quantity}
+                        <span className={`badge ${p.stock < 5 ? "badge-red" : "badge-green"}`}>
+                          {p.stock}
                         </span>
                       </td>
                     </tr>

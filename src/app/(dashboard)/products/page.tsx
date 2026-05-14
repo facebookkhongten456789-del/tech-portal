@@ -13,12 +13,12 @@ async function updateQuantity(formData: FormData) {
   if (!session || session.user?.role !== "ADMIN" || !(session.user as any).isApproved) return;
 
   const id  = formData.get("id") as string;
-  const qty = Math.max(0, parseInt(formData.get("quantity") as string) || 0);
+  const qty = Math.max(0, parseInt(formData.get("stock") as string) || 0);
   if (!id) return;
 
   await prisma.product.update({ 
     where: { id }, 
-    data: { quantity: qty, isOutOfStock: qty === 0 }
+    data: { stock: qty, isOutOfStock: qty === 0 }
   });
   revalidatePath("/products");
 }
@@ -61,9 +61,9 @@ export default async function ProductsPage() {
 
   const products = await prisma.product.findMany({ orderBy: { createdAt: "desc" } });
 
-  const totalQty   = products.reduce((s, p) => s + p.quantity, 0);
-  const lowStock   = products.filter((p) => p.quantity < 5).length;
-  const outOfStockCount = products.filter((p) => p.isOutOfStock || p.quantity === 0).length;
+  const totalQty   = products.reduce((s, p) => s + p.stock, 0);
+  const lowStock   = products.filter((p) => p.stock < 5).length;
+  const outOfStockCount = products.filter((p) => p.isOutOfStock || p.stock === 0).length;
 
   return (
     <>
@@ -151,11 +151,11 @@ export default async function ProductsPage() {
                       {isAdmin ? (
                         <form action={updateQuantity} style={{ display: "flex", gap: "6px" }}>
                           <input type="hidden" name="id" value={p.id} />
-                          <input type="number" name="quantity" defaultValue={p.quantity} min={0} className="form-input" style={{ width: "70px" }} />
+                          <input type="number" name="stock" defaultValue={p.stock} min={0} className="form-input" style={{ width: "70px" }} />
                           <button type="submit" className="btn btn-ghost btn-sm">💾</button>
                         </form>
                       ) : (
-                        <span className={`badge ${p.quantity < 5 ? "badge-yellow" : "badge-green"}`}>{p.quantity}</span>
+                        <span className={`badge ${p.stock < 5 ? "badge-yellow" : "badge-green"}`}>{p.stock}</span>
                       )}
                     </td>
                     <td className="font-mono">{p.price.toLocaleString()}₫</td>
