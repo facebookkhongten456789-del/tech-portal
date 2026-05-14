@@ -62,6 +62,10 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: { signIn: "/login" },
-  session: { strategy: "jwt" },
+  session: { 
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 giờ (giới hạn truy cập)
+    updateAge: 2 * 60 * 60, // Cập nhật session mỗi 2 giờ nếu có hoạt động
+  },
   secret: process.env.NEXTAUTH_SECRET,
 };

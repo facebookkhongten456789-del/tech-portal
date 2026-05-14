@@ -158,19 +158,6 @@ export default async function ArticleDetailPage({
               </div>
             </div>
 
-            {/* Images grid (non-inline) */}
-            {images.length > 1 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: "8px", marginBottom: "24px" }}>
-                {images.map((src, i) => (
-                  <a key={i} href={src} target="_blank" rel="noopener noreferrer">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={src} alt={`Ảnh ${i+1}`}
-                      style={{ width: "100%", height: "140px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--border)", cursor: "zoom-in" }}
-                    />
-                  </a>
-                ))}
-              </div>
-            )}
 
             {/* Rendered content */}
             <div
