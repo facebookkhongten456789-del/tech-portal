@@ -1,0 +1,44 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String?
+  email        String    @unique
+  passwordHash String
+  role         String    @default("TECHNICIAN") // ADMIN | TECHNICIAN
+  createdAt    DateTime  @default(now())
+  articles     Article[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  sku         String   @unique
+  description String?
+  image       String?  // URL to product image
+  quantity    Int      @default(0)
+  price       Float    @default(0)
+  isOutOfStock Boolean @default(false) // Manual out of stock status
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Article {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  images    String   @default("[]") // JSON array
+  published Boolean  @default(false)
+  isApproved Boolean @default(false) // Manual approval by Admin
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
