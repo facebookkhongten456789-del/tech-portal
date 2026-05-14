@@ -66,6 +66,21 @@ async function deleteMember(formData: FormData) {
   }
 }
 
+async function cleanupAllPending() {
+  "use server";
+  const session = await getServerSession(authOptions);
+  if (!session || session.user?.role !== "ADMIN") return;
+
+  try {
+    await prisma.user.deleteMany({
+      where: { isApproved: false }
+    });
+    revalidatePath("/members");
+  } catch (err) {
+    console.error("[cleanup_pending_error]", err);
+  }
+}
+
 /* ─── Page ─── */
 export default async function MembersPage({ searchParams }: { searchParams: Promise<{ error?: string, success?: string }> }) {
   const session = await getServerSession(authOptions);
@@ -134,8 +149,15 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
         <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
 
           <div className="page-section">
-            <div className="section-header">
+            <div className="section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div className="section-title" style={{ color: "var(--yellow)" }}>⏳ Yêu cầu chờ duyệt ({pendingUsers.length})</div>
+              {pendingUsers.length > 0 && (
+                <form action={cleanupAllPending}>
+                  <button type="submit" className="btn btn-ghost btn-sm text-red" style={{ fontSize: "11px" }}>
+                    🗑️ Dọn dẹp tất cả yêu cầu rác
+                  </button>
+                </form>
+              )}
             </div>
             {pendingUsers.length === 0 ? (
               <div className="card" style={{ padding: "20px", textAlign: "center", color: "var(--fg-muted)" }}>
@@ -157,6 +179,9 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
                       <tr key={u.id}>
                         <td><div style={{ fontWeight: 600 }}>{u.name}</div></td>
                         <td className="font-mono text-sm">{u.email}</td>
+                        <td className="text-sm">
+                          <span className="badge badge-gray" style={{ fontSize: "10px" }}>👤 Bởi: {u.invitedBy || "Hệ thống"}</span>
+                        </td>
                         <td className="text-sm">{new Date(u.createdAt).toLocaleDateString("vi-VN")}</td>
                         <td>
                           <div style={{ display: "flex", gap: "8px" }}>

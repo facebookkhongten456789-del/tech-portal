@@ -6,11 +6,12 @@ import Link from "next/link";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [name, setName]         = useState("");
-  const [email, setEmail]       = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+  const [name, setName]               = useState("");
+  const [email, setEmail]             = useState("");
+  const [password, setPassword]       = useState("");
+  const [inviteCode, setInviteCode]   = useState("");
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,13 +22,12 @@ export default function RegisterPage() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, inviteCode }),
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        // Đăng ký thành công, chuyển đến trang login
         router.push("/login?registered=true");
       } else {
         setError(data.error || "Đăng ký thất bại");
@@ -53,7 +53,7 @@ export default function RegisterPage() {
           <div style={{ fontSize: "32px", marginBottom: "12px" }}>⚡</div>
           <h1 style={{ fontSize: "24px", fontWeight: 800 }}>Tham gia TechPortal</h1>
           <p style={{ color: "var(--fg-muted)", fontSize: "14px", marginTop: "4px" }}>
-            Đăng ký tài khoản Kỹ thuật viên mới
+            Hệ thống Quản lý Kỹ thuật viên (Nội bộ)
           </p>
         </div>
 
@@ -92,11 +92,22 @@ export default function RegisterPage() {
               <input
                 type="password"
                 required
-                minLength={6}
+                minLength={10}
                 className="form-input"
-                placeholder="Tối thiểu 6 ký tự"
+                placeholder="Tối thiểu 10 ký tự"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Mã mời (Email người giới thiệu) <span className="required">*</span></label>
+              <input
+                type="email"
+                required
+                className="form-input"
+                placeholder="Nhập Email của một thành viên đã được duyệt"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
               />
             </div>
 
@@ -106,7 +117,7 @@ export default function RegisterPage() {
               disabled={loading}
               style={{ marginTop: "8px" }}
             >
-              {loading ? "Đang xử lý..." : "Đăng ký ngay"}
+              {loading ? "Đang xử lý..." : "Gửi yêu cầu gia nhập"}
             </button>
           </form>
 

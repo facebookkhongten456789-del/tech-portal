@@ -16,6 +16,10 @@ model User {
   isApproved   Boolean   @default(false)
   registrationIp String?
   lastLogin    DateTime?
+  lastIp       String?
+  failedAttempts Int       @default(0)
+  lockoutUntil   DateTime?
+  invitedBy      String?   // Email của người giới thiệu
   createdAt    DateTime  @default(now())
   articles     Article[]
 }
