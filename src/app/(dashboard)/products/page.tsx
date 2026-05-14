@@ -61,8 +61,8 @@ export default async function ProductsPage() {
 
   const products = await prisma.product.findMany({ orderBy: { createdAt: "desc" } });
 
-  const totalQty   = products.reduce((s, p) => s + p.stock, 0);
-  const lowStock   = products.filter((p) => p.stock < 5).length;
+  const totalQty   = products.reduce((s, p) => (p.isOutOfStock || p.stock === 0) ? s : s + p.stock, 0);
+  const lowStock   = products.filter((p) => !p.isOutOfStock && p.stock > 0 && p.stock < 5).length;
   const outOfStockCount = products.filter((p) => p.isOutOfStock || p.stock === 0).length;
 
   return (
@@ -86,6 +86,12 @@ export default async function ProductsPage() {
           )}
         </div>
       </header>
+
+      {/* Thêm liên kết đến các mục con */}
+      <div style={{ margin: "20px 0", display: "flex", gap: "16px" }}>
+        <Link href="/products/dien-thoai" className="btn btn-outline">Điện thoại</Link>
+        <Link href="/products/linh-kien-dien-thoai" className="btn btn-outline">Linh kiện điện thoại</Link>
+      </div>
 
       <div className="page-body animate-in">
         {!isApproved && (
