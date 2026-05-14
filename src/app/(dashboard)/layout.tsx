@@ -5,7 +5,20 @@ import { authOptions } from "@/lib/auth";
 import LogoutButton from "@/components/LogoutButton";
 import ApprovalStatusGuard from "@/components/ApprovalStatusGuard";
 
-const NAV_ITEMS = [
+interface NavLink {
+  href: string;
+  icon: string;
+  label: string;
+  adminOnly?: boolean;
+  approvedOnly?: boolean;
+}
+
+interface NavGroup {
+  section: string;
+  links: NavLink[];
+}
+
+const NAV_ITEMS: NavGroup[] = [
   {
     section: "TỔNG QUAN",
     links: [
@@ -61,16 +74,23 @@ export default async function DashboardLayout({
         {/* Nav */}
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((group) => {
-            const filteredLinks = group.links.filter(l => {
-              if (l.adminOnly && !isAdmin) return false;
-              if (l.approvedOnly && !isApproved) return false;
+            // Ép kiểu NavLink tường minh để tránh lỗi Type Error trên Vercel
+            const filteredLinks = group.links.filter((link: NavLink) => {
+              const needsAdmin = link.adminOnly === true;
+              const needsApproval = link.approvedOnly === true;
+              
+              if (needsAdmin && !isAdmin) return false;
+              if (needsApproval && !isApproved) return false;
+              
               return true;
             });
+
             if (filteredLinks.length === 0) return null;
+
             return (
               <div key={group.section}>
                 <div className="sidebar-section-label">{group.section}</div>
-                {filteredLinks.map((link) => (
+                {filteredLinks.map((link: NavLink) => (
                   <Link key={link.href} href={link.href} className="sidebar-link">
                     <span className="sidebar-link-icon">{link.icon}</span>
                     {link.label}
