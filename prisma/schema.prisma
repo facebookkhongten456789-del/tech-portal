@@ -14,6 +14,8 @@ model User {
   passwordHash String
   role         String    @default("TECHNICIAN") // ADMIN | TECHNICIAN
   isApproved   Boolean   @default(false)
+  registrationIp String?
+  lastLogin    DateTime?
   createdAt    DateTime  @default(now())
   articles     Article[]
 }
