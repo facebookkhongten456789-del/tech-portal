@@ -24,8 +24,9 @@ model Product {
   sku         String   @unique
   description String?
   image       String?  // URL to product image
-  quantity    Int      @default(0)
+  stock       Int      @default(0)
   price       Float    @default(0)
+  category    String?
   isOutOfStock Boolean @default(false) // Manual out of stock status
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
