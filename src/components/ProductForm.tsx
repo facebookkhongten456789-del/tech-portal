@@ -63,10 +63,12 @@ export default function ProductForm({ addProductAction }: ProductFormProps) {
           <div className="form-group">
             <label className="form-label">Danh mục sản phẩm</label>
             <select name="category" className="form-input" style={{ appearance: "none" }}>
-              <option value="Thiết bị an ninh">Thiết bị an ninh</option>
-              <option value="Phụ kiện mạng">Phụ kiện mạng</option>
-              <option value="Linh kiện máy tính">Linh kiện máy tính</option>
-              <option value="Dụng cụ kỹ thuật">Dụng cụ kỹ thuật</option>
+              <option value="Điện thoại">📱 Điện thoại</option>
+              <option value="Linh kiện điện thoại">🔌 Linh kiện điện thoại</option>
+              <option value="Thiết bị an ninh">🛡️ Thiết bị an ninh</option>
+              <option value="Phụ kiện mạng">🌐 Phụ kiện mạng</option>
+              <option value="Linh kiện máy tính">💻 Linh kiện máy tính</option>
+              <option value="Dụng cụ kỹ thuật">🔧 Dụng cụ kỹ thuật</option>
             </select>
           </div>
 
