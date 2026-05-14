@@ -163,9 +163,18 @@ export default async function ProductsPage() {
                       <div style={{ display: "flex", gap: "6px" }}>
                         <Link href={`/products/${p.id}`} className="btn btn-ghost btn-sm">Xem</Link>
                         {isAdmin && (
+                          <form action={toggleOutOfStock}>
+                            <input type="hidden" name="id" value={p.id} />
+                            <input type="hidden" name="current" value={String(p.isOutOfStock)} />
+                            <button type="submit" className={`btn btn-ghost btn-sm ${p.isOutOfStock ? "text-green" : "text-yellow"}`} title={p.isOutOfStock ? "Đánh dấu còn hàng" : "Đánh dấu hết hàng"}>
+                              {p.isOutOfStock ? "✅" : "🚫"}
+                            </button>
+                          </form>
+                        )}
+                        {isAdmin && (
                           <form action={deleteProduct}>
                             <input type="hidden" name="id" value={p.id} />
-                            <button type="submit" className="btn btn-ghost btn-sm text-red">Xóa</button>
+                            <button type="submit" className="btn btn-ghost btn-sm text-red" title="Xóa sản phẩm">🗑️</button>
                           </form>
                         )}
                       </div>
