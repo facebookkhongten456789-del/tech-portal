@@ -39,6 +39,16 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.id = user.id;
         token.isApproved = (user as any).isApproved;
+      } else if (token.id) {
+        // Cập nhật trạng thái mới nhất từ DB để không cần logout/login lại
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, isApproved: true }
+        });
+        if (dbUser) {
+          token.role = dbUser.role;
+          token.isApproved = dbUser.isApproved;
+        }
       }
       return token;
     },

@@ -137,6 +137,7 @@ export default async function ArticlesPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {articles.map((article) => {
               const canAct = (article.author.id === userId || isAdmin) && isApproved;
+              const canApprove = isAdmin && !article.isApproved;
               let imgList: string[] = [];
               try { imgList = JSON.parse(article.images); } catch { imgList = []; }
               const thumb = imgList[0] ?? null;
@@ -157,15 +158,21 @@ export default async function ArticlesPage() {
                         <Link href={`/articles/${article.id}`} style={{ fontWeight: 700, fontSize: "15px" }}>{article.title}</Link>
                         <div className="text-xs text-muted">✍️ {article.author.name}</div>
                       </div>
-                      {canAct && (
-                        <div style={{ display: "flex", gap: "6px" }}>
-                          <Link href={`/articles/${article.id}`} className="btn btn-ghost btn-sm">Xem</Link>
+                      <div style={{ display: "flex", gap: "6px", alignItems: "flex-start" }}>
+                        {canApprove && (
+                          <form action={approveArticle}>
+                            <input type="hidden" name="id" value={article.id} />
+                            <button type="submit" className="btn btn-primary btn-sm" style={{ background: "var(--green)", borderColor: "var(--green)" }}>Duyệt bài</button>
+                          </form>
+                        )}
+                        <Link href={`/articles/${article.id}`} className="btn btn-ghost btn-sm">Xem</Link>
+                        {canAct && (
                           <form action={deleteArticle}>
                             <input type="hidden" name="id" value={article.id} />
                             <button type="submit" className="btn btn-danger btn-sm">Xóa</button>
                           </form>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -67,7 +67,7 @@ export default async function DashboardLayout({
       <aside className="sidebar">
         {/* Brand */}
         <div className="sidebar-brand">
-          <div className="sidebar-brand-icon">⚡</div>
+          <div className="sidebar-brand-icon animate-float">⚡</div>
           <span className="sidebar-brand-name">TechPortal</span>
         </div>
 

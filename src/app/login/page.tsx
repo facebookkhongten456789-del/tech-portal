@@ -70,7 +70,7 @@ function LoginContent() {
             fontSize: "24px",
             margin: "0 auto 14px",
             boxShadow: "0 0 32px rgba(59,130,246,0.3)",
-          }}>⚡</div>
+          }} className="animate-float">⚡</div>
           <h1 style={{
             fontSize: "22px", fontWeight: 800,
             background: "linear-gradient(90deg,#e0eaff,#a5b4fc)",
