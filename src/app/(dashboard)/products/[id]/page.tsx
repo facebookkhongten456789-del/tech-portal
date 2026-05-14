@@ -76,7 +76,7 @@ export default async function ProductDetailsPage({ params }: { params: Params })
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span className="text-muted">Số lượng hiện tại:</span>
-                  <span style={{ fontWeight: 700, color: product.quantity < 5 ? "var(--red)" : "var(--green)" }}>{product.quantity}</span>
+                  <span style={{ fontWeight: 700, color: product.stock < 5 ? "var(--red)" : "var(--green)" }}>{product.stock}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span className="text-muted">Cập nhật lần cuối:</span>
