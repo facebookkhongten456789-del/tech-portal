@@ -12,14 +12,14 @@ model User {
   name         String?
   email        String    @unique
   passwordHash String
-  role         String    @default("TECHNICIAN") // ADMIN | TECHNICIAN
+  role         String    @default("TECHNICIAN")
   isApproved   Boolean   @default(false)
   registrationIp String?
   lastLogin    DateTime?
   lastIp       String?
   failedAttempts Int       @default(0)
   lockoutUntil   DateTime?
-  invitedBy      String?   // Email của người giới thiệu
+  invitedBy      String?
   createdAt    DateTime  @default(now())
   articles     Article[]
 }
@@ -29,11 +29,11 @@ model Product {
   name        String
   sku         String   @unique
   description String?
-  image       String?  // URL to product image
+  image       String?
   stock       Int      @default(0)
   price       Float    @default(0)
   category    String?
-  isOutOfStock Boolean @default(false) // Manual out of stock status
+  isOutOfStock Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -42,9 +42,9 @@ model Article {
   id        String   @id @default(cuid())
   title     String
   content   String
-  images    String   @default("[]") // JSON array
+  images    String   @default("[]")
   published Boolean  @default(false)
-  isApproved Boolean @default(false) // Manual approval by Admin
+  isApproved Boolean @default(false)
   authorId  String
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
