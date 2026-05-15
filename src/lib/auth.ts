@@ -16,52 +16,70 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
+        const ip = (req as any)?.headers?.["x-forwarded-for"] || "127.0.0.1";
+        const userAgent = (req as any)?.headers?.["user-agent"] || "unknown";
+
         if (!credentials?.email || !credentials?.password) return null;
         
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase() },
         });
 
-        if (!user) return null;
+        // 🛡️ Fix Audit: Nếu user không tồn tại, trả về null (Generic error)
+        if (!user) {
+          await prisma.auditLog.create({
+            data: { event: "LOGIN_FAIL_NOT_FOUND", email: credentials.email, ip, userAgent, details: "Email not registered" }
+          });
+          throw new Error("Thông tin đăng nhập không chính xác hoặc tài khoản chưa được phê duyệt.");
+        }
 
-        // 🛡️ Fix 6: Brute Force Protection - Kiểm tra tài khoản có đang bị khóa không
+        // 🛡️ Brute Force Check
         if (user.lockoutUntil && user.lockoutUntil > new Date()) {
           const waitTime = Math.ceil((user.lockoutUntil.getTime() - Date.now()) / 1000 / 60);
-          throw new Error(`Tài khoản bị khóa tạm thời. Vui lòng thử lại sau ${waitTime} phút.`);
+          throw new Error(`Tài khoản bị khóa tạm thời do nhập sai nhiều lần. Vui lòng thử lại sau ${waitTime} phút.`);
         }
 
         const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
 
         if (!isPasswordValid) {
-          // Tăng số lần thử sai
           const newFailedAttempts = user.failedAttempts + 1;
-          const lockoutUntil = newFailedAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null; // Khóa 15 phút
+          const lockoutUntil = newFailedAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
 
           await prisma.user.update({
             where: { id: user.id },
+            data: { failedAttempts: newFailedAttempts, lockoutUntil: lockoutUntil }
+          });
+
+          await prisma.auditLog.create({
             data: { 
-              failedAttempts: newFailedAttempts,
-              lockoutUntil: lockoutUntil
+              event: "LOGIN_FAIL_PASSWORD", 
+              userId: user.id, 
+              email: user.email, 
+              ip, 
+              userAgent, 
+              details: `Attempts: ${newFailedAttempts}${lockoutUntil ? ' - LOCKED' : ''}` 
             }
           });
 
-          if (lockoutUntil) {
-            throw new Error("Sai mật khẩu quá nhiều lần. Tài khoản đã bị khóa 15 phút.");
-          }
-          return null;
+          throw new Error("Thông tin đăng nhập không chính xác hoặc tài khoản chưa được phê duyệt.");
         }
 
-        // 🛡️ Đăng nhập thành công: Reset trạng thái và cập nhật thông tin truy cập
-        const ip = (req as any)?.headers?.["x-forwarded-for"] || "127.0.0.1";
-        
+        // 🛡️ Check Approval
+        if (!user.isApproved) {
+          await prisma.auditLog.create({
+            data: { event: "LOGIN_FAIL_PENDING", userId: user.id, email: user.email, ip, userAgent }
+          });
+          throw new Error("Tài khoản của bạn đang chờ phê duyệt. Vui lòng liên hệ Admin.");
+        }
+
+        // 🛡️ Login Success
         await prisma.user.update({
           where: { id: user.id },
-          data: { 
-            failedAttempts: 0, 
-            lockoutUntil: null,
-            lastLogin: new Date(),
-            lastIp: ip
-          }
+          data: { failedAttempts: 0, lockoutUntil: null, lastLogin: new Date(), lastIp: ip }
+        });
+
+        await prisma.auditLog.create({
+          data: { event: "LOGIN_SUCCESS", userId: user.id, email: user.email, ip, userAgent }
         });
 
         return {
@@ -80,15 +98,6 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.id = user.id;
         token.isApproved = (user as any).isApproved;
-      } else if (token.id) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { role: true, isApproved: true }
-        });
-        if (dbUser) {
-          token.role = dbUser.role;
-          token.isApproved = dbUser.isApproved;
-        }
       }
       return token;
     },
@@ -104,7 +113,7 @@ export const authOptions: NextAuthOptions = {
   pages: { signIn: "/login" },
   session: { 
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 giờ
+    maxAge: 24 * 60 * 60,
     updateAge: 2 * 60 * 60,
   },
   secret: process.env.NEXTAUTH_SECRET,

@@ -4,18 +4,37 @@ import bcrypt from "bcryptjs";
 
 // Cấu hình bảo mật nâng cao
 const REGISTRATION_COOLDOWN = 10 * 60 * 1000; // 10 phút
-const MAX_INVITES_PER_USER = 3; // Giới hạn mỗi người chỉ được bảo lãnh 3 người
+const MAX_INVITES_PER_USER = 5; // Tăng lên 5 người
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+  const userAgent = req.headers.get("user-agent") || "unknown";
+
   try {
     const body = await req.json();
-    const { name, email, password, inviteCode } = body;
+    const { name, email, password, inviteCode, captchaAnswer, captchaQuestion } = body;
 
-    if (!name || !email || !password || !inviteCode) {
-      return NextResponse.json({ error: "Thông tin không đầy đủ" }, { status: 400 });
+    // 🛡️ 1. Xác thực Math CAPTCHA (Chống Bot)
+    // Câu hỏi có dạng "X + Y"
+    if (!captchaAnswer || !captchaQuestion) {
+      return NextResponse.json({ error: "Vui lòng xác minh mã Captcha." }, { status: 400 });
     }
 
-    // 🛡️ 1. Kiểm tra người giới thiệu (Inviter)
+    const [num1, operator, num2] = captchaQuestion.split(" ");
+    const expected = parseInt(num1) + parseInt(num2);
+    
+    if (parseInt(captchaAnswer) !== expected) {
+      await prisma.auditLog.create({
+        data: { event: "REGISTER_CAPTCHA_FAIL", email, ip, userAgent, details: `Wrong answer: ${captchaAnswer}` }
+      });
+      return NextResponse.json({ error: "Mã xác nhận (Captcha) không chính xác." }, { status: 400 });
+    }
+
+    if (!name || !email || !password || !inviteCode) {
+      return NextResponse.json({ error: "Thông tin không đầy đủ." }, { status: 400 });
+    }
+
+    // 🛡️ 2. Kiểm tra người giới thiệu (STRICT VALIDATION)
     const inviter = await prisma.user.findUnique({
       where: { 
         email: inviteCode.toLowerCase(),
@@ -24,13 +43,15 @@ export async function POST(req: NextRequest) {
     });
 
     if (!inviter) {
+      await prisma.auditLog.create({
+        data: { event: "REGISTER_INVITE_FAIL", email, ip, userAgent, details: `Invalid invite code: ${inviteCode}` }
+      });
       return NextResponse.json({ 
-        error: "Người giới thiệu không tồn tại hoặc chưa được phê duyệt." 
+        error: "Mã mời không hợp lệ hoặc người bảo lãnh chưa được duyệt." 
       }, { status: 403 });
     }
 
-    // 🛡️ 2. Kiểm tra giới hạn bảo lãnh (Hạn mức)
-    // Nếu không phải ADMIN thì bị giới hạn số lượng bảo lãnh
+    // 🛡️ 3. Kiểm tra giới hạn bảo lãnh
     if (inviter.role !== "ADMIN") {
       const inviteCount = await prisma.user.count({
         where: { invitedBy: inviter.email }
@@ -38,13 +59,12 @@ export async function POST(req: NextRequest) {
 
       if (inviteCount >= MAX_INVITES_PER_USER) {
         return NextResponse.json({ 
-          error: "Thành viên này đã hết hạn mức bảo lãnh (Tối đa 3 người)." 
+          error: "Thành viên này đã hết hạn mức bảo lãnh." 
         }, { status: 403 });
       }
     }
 
-    // 🛡️ 3. Chặn Account Flood (IP Cooldown)
-    const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+    // 🛡️ 4. Chặn Account Flood (IP Cooldown)
     const recentRegistration = await prisma.user.findFirst({
       where: {
         registrationIp: ip,
@@ -53,17 +73,17 @@ export async function POST(req: NextRequest) {
     });
 
     if (recentRegistration) {
-      return NextResponse.json({ error: "Thao tác quá nhanh." }, { status: 429 });
+      return NextResponse.json({ error: "Thao tác quá nhanh. Thử lại sau 10 phút." }, { status: 429 });
     }
 
-    // 🛡️ 4. Chống User Enumeration
+    // 🛡️ 5. Chống User Enumeration
     const existing = await prisma.user.findUnique({
       where: { email: email.toLowerCase() }
     });
 
     if (existing) {
       return NextResponse.json({ 
-        message: "Yêu cầu đã được ghi nhận. Vui lòng chờ Admin duyệt." 
+        message: "Yêu cầu đã được ghi nhận. Vui lòng chờ phê duyệt." 
       }, { status: 201 });
     }
 
@@ -73,8 +93,8 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // 🛡️ 5. Lưu thông tin người bảo lãnh để truy cứu trách nhiệm
-    await prisma.user.create({
+    // 🛡️ 6. Tạo tài khoản & Ghi log
+    const newUser = await prisma.user.create({
       data: {
         name: String(name).trim().slice(0, 50),
         email: email.toLowerCase(),
@@ -82,16 +102,27 @@ export async function POST(req: NextRequest) {
         role: "TECHNICIAN",
         isApproved: false,
         registrationIp: ip,
-        invitedBy: inviter.email // Lưu vết người bảo lãnh
+        invitedBy: inviter.email
+      }
+    });
+
+    await prisma.auditLog.create({
+      data: { 
+        event: "REGISTER_SUCCESS", 
+        userId: newUser.id,
+        email: newUser.email,
+        ip, 
+        userAgent,
+        details: `Invited by ${inviter.email}`
       }
     });
 
     return NextResponse.json({ 
-      message: "Yêu cầu đã được ghi nhận. Vui lòng chờ Admin duyệt." 
+      message: "Yêu cầu đã được ghi nhận. Vui lòng chờ phê duyệt." 
     }, { status: 201 });
 
   } catch (error) {
-    console.error("[register_hardened_v2_error]", error);
-    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
+    console.error("[register_hardened_v3_error]", error);
+    return NextResponse.json({ error: "Lỗi hệ thống (502/500). Vui lòng thử lại." }, { status: 500 });
   }
 }
