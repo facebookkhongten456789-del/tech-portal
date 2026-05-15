@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { verifyTurnstile } from "./turnstile";
 
 if (!process.env.NEXTAUTH_SECRET) {
   throw new Error("NEXTAUTH_SECRET không được thiết lập.");
@@ -14,29 +15,44 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        turnstileToken: { label: "Turnstile Token", type: "text" },
       },
       async authorize(credentials, req) {
         const ip = (req as any)?.headers?.["x-forwarded-for"] || "127.0.0.1";
         const userAgent = (req as any)?.headers?.["user-agent"] || "unknown";
 
         if (!credentials?.email || !credentials?.password) return null;
+
+        // 🛡️ 1. Xác thực Turnstile Token
+        if (!credentials.turnstileToken) {
+          throw new Error("Vui lòng hoàn thành xác minh bảo mật.");
+        }
+        const isBotCheckValid = await verifyTurnstile(credentials.turnstileToken);
+        if (!isBotCheckValid) {
+          await prisma.auditLog.create({
+            data: { event: "LOGIN_BOT_DETECTED", email: credentials.email, ip, userAgent }
+          });
+          throw new Error("Xác minh bảo mật thất bại. Vui lòng thử lại.");
+        }
         
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase() },
         });
 
-        // 🛡️ Fix Audit: Nếu user không tồn tại, trả về null (Generic error)
+        // 🛡️ 2. Generic Error Message
+        const GENERIC_ERROR = "Thông tin đăng nhập không chính xác hoặc tài khoản chưa được phê duyệt.";
+
         if (!user) {
           await prisma.auditLog.create({
-            data: { event: "LOGIN_FAIL_NOT_FOUND", email: credentials.email, ip, userAgent, details: "Email not registered" }
+            data: { event: "LOGIN_FAIL_NOT_FOUND", email: credentials.email, ip, userAgent }
           });
-          throw new Error("Thông tin đăng nhập không chính xác hoặc tài khoản chưa được phê duyệt.");
+          throw new Error(GENERIC_ERROR);
         }
 
-        // 🛡️ Brute Force Check
+        // 🛡️ 3. Brute Force Check
         if (user.lockoutUntil && user.lockoutUntil > new Date()) {
           const waitTime = Math.ceil((user.lockoutUntil.getTime() - Date.now()) / 1000 / 60);
-          throw new Error(`Tài khoản bị khóa tạm thời do nhập sai nhiều lần. Vui lòng thử lại sau ${waitTime} phút.`);
+          throw new Error(`Tài khoản bị khóa tạm thời. Thử lại sau ${waitTime} phút.`);
         }
 
         const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
@@ -51,28 +67,21 @@ export const authOptions: NextAuthOptions = {
           });
 
           await prisma.auditLog.create({
-            data: { 
-              event: "LOGIN_FAIL_PASSWORD", 
-              userId: user.id, 
-              email: user.email, 
-              ip, 
-              userAgent, 
-              details: `Attempts: ${newFailedAttempts}${lockoutUntil ? ' - LOCKED' : ''}` 
-            }
+            data: { event: "LOGIN_FAIL_PASSWORD", userId: user.id, email: user.email, ip, userAgent, details: `Attempts: ${newFailedAttempts}` }
           });
 
-          throw new Error("Thông tin đăng nhập không chính xác hoặc tài khoản chưa được phê duyệt.");
+          throw new Error(GENERIC_ERROR);
         }
 
-        // 🛡️ Check Approval
+        // 🛡️ 4. Check Approval
         if (!user.isApproved) {
           await prisma.auditLog.create({
             data: { event: "LOGIN_FAIL_PENDING", userId: user.id, email: user.email, ip, userAgent }
           });
-          throw new Error("Tài khoản của bạn đang chờ phê duyệt. Vui lòng liên hệ Admin.");
+          throw new Error("Tài khoản của bạn đang chờ phê duyệt.");
         }
 
-        // 🛡️ Login Success
+        // 🛡️ Success
         await prisma.user.update({
           where: { id: user.id },
           data: { failedAttempts: 0, lockoutUntil: null, lastLogin: new Date(), lastIp: ip }
@@ -111,10 +120,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: { signIn: "/login" },
-  session: { 
-    strategy: "jwt",
-    maxAge: 24 * 60 * 60,
-    updateAge: 2 * 60 * 60,
-  },
+  session: { strategy: "jwt", maxAge: 24 * 60 * 60 },
   secret: process.env.NEXTAUTH_SECRET,
 };
