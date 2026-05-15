@@ -32,18 +32,12 @@ export default function SidebarToggle() {
       className="mobile-menu-btn btn btn-ghost" 
       onClick={toggle}
       style={{
-        display: "none",
         fontSize: "20px",
         padding: "8px",
         marginRight: "12px",
       }}
     >
       {isOpen ? "✕" : "☰"}
-      <style jsx>{`
-        @media (max-width: 1024px) {
-          button { display: flex !important; }
-        }
-      `}</style>
     </button>
   );
 }
