@@ -4,6 +4,7 @@ import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import LogoutButton from "@/components/LogoutButton";
 import ApprovalStatusGuard from "@/components/ApprovalStatusGuard";
+import SidebarToggle from "@/components/SidebarToggle";
 
 interface NavLink {
   href: string;
@@ -123,6 +124,25 @@ export default async function DashboardLayout({
 
       {/* ── Main ── */}
       <div className="main-content">
+        <header className="mobile-only-header" style={{
+          display: "none",
+          height: "var(--header-h)",
+          background: "var(--bg-surface)",
+          borderBottom: "1px solid var(--border)",
+          alignItems: "center",
+          padding: "0 16px",
+          position: "sticky",
+          top: 0,
+          zIndex: 35
+        }}>
+          <SidebarToggle />
+          <span style={{ fontWeight: 700, fontSize: "14px" }}>TechPortal</span>
+          <style jsx>{`
+            @media (max-width: 1024px) {
+              .mobile-only-header { display: flex !important; }
+            }
+          `}</style>
+        </header>
         <ApprovalStatusGuard />
         {children}
       </div>
