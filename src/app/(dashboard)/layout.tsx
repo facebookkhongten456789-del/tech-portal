@@ -50,6 +50,7 @@ const NAV_ITEMS: NavGroup[] = [
     section: "HỆ THỐNG",
     links: [
       { href: "/members", icon: "👥", label: "Phê duyệt thành viên", adminOnly: true, approvedOnly: true },
+      { href: "/policy", icon: "📜", label: "Chính sách & Quy định" },
     ],
   },
 ];
