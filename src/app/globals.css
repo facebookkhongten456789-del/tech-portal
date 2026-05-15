@@ -700,26 +700,28 @@ body::before {
 /* ====================== RESPONSIVE ====================== */
 @media (max-width: 1024px) {
   :root {
-    --sidebar-w: 0px;
+    --sidebar-w: 0px !important;
   }
   
   .sidebar {
+    display: none;
     transform: translateX(-100%);
-    transition: transform var(--transition-base);
+    width: 280px !important;
   }
   
   .sidebar.open {
+    display: flex;
     transform: translateX(0);
-    width: 256px;
-    --sidebar-w: 256px;
+    z-index: 9999;
   }
 
   .main-content {
-    margin-left: 0;
+    margin-left: 0 !important;
+    width: 100%;
   }
 
   .page-header {
-    padding: 0 16px;
+    display: none !important; /* Ẩn header của từng trang trên mobile để tránh chồng chéo */
   }
 
   .mobile-only-header {
@@ -737,6 +739,37 @@ body::before {
   .mobile-menu-btn {
     display: flex !important;
   }
+
+  .product-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .product-form-grid > div:last-child {
+    order: -1; /* Đưa phần tải ảnh lên trên đầu trên mobile */
+  }
+
+  .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .card {
+    padding: 20px !important;
+  }
+}
+
+.product-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 32px;
+  align-items: start;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
 }
 
 .mobile-only-header, .mobile-menu-btn {

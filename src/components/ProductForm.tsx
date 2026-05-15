@@ -26,7 +26,7 @@ export default function ProductForm({ addProductAction }: ProductFormProps) {
   };
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "32px", alignItems: "start" }}>
+    <div className="product-form-grid">
       {/* Main Form Card */}
       <div className="card" style={{ padding: "32px", background: "rgba(10, 10, 10, 0.6)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}>
         <div style={{ marginBottom: "28px" }}>
@@ -38,7 +38,7 @@ export default function ProductForm({ addProductAction }: ProductFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+          <div className="form-row">
             <div className="form-group">
               <label className="form-label">Tên sản phẩm <span className="required">*</span></label>
               <input name="name" className="form-input" placeholder="Ví dụ: Camera IP Hikvision 2MP" required />
@@ -49,7 +49,7 @@ export default function ProductForm({ addProductAction }: ProductFormProps) {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+          <div className="form-row">
             <div className="form-group">
               <label className="form-label">Giá nhập (VNĐ)</label>
               <input name="price" type="number" className="form-input" placeholder="0" />
