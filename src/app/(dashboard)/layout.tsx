@@ -44,7 +44,6 @@ const NAV_ITEMS: NavGroup[] = [
     section: "TÀI CHÍNH",
     links: [
       { href: "/finance", icon: "💰", label: "Quản lý Tài chính", adminOnly: true, approvedOnly: true },
-      { href: "/finance/loans", icon: "🏦", label: "Khoản vay & Tín dụng", adminOnly: true, approvedOnly: true },
     ],
   },
   {

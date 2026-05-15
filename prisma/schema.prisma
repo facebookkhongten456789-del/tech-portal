@@ -60,15 +60,3 @@ model Transaction {
   date        DateTime @default(now())
   createdAt   DateTime @default(now())
 }
-
-model Loan {
-  id          String   @id @default(cuid())
-  lender      String   
-  amount      Float
-  interest    Float    
-  term        Int      
-  startDate   DateTime @default(now())
-  status      String   @default("ACTIVE")
-  description String?
-  createdAt   DateTime @default(now())
-}
