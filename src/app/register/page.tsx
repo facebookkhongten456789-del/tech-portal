@@ -17,7 +17,7 @@ export default function RegisterPage() {
   const [error, setError]             = useState("");
   const [success, setSuccess]         = useState(false);
 
-  const handleSubmit = async (e: React.Form) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!turnstileToken) {
       setError("Vui lòng hoàn thành xác minh bảo mật.");
